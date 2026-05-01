@@ -348,5 +348,8 @@ PHP_Laravel12_Envy
 
 Your PHP_Laravel12_Envy Project is now ready!             
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> development
