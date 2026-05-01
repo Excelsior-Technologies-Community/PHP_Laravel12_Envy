@@ -17,4 +17,16 @@ class AppEnvironment
         public string $DB_USERNAME,
         public string $DB_PASSWORD,
     ) {}
+
+    // ✅ Check if production
+    public function isProduction(): bool
+    {
+        return $this->APP_ENV === 'production';
+    }
+
+    // ✅ Check DB configured
+    public function isDatabaseConfigured(): bool
+    {
+        return !empty($this->DB_DATABASE) && !empty($this->DB_USERNAME);
+    }
 }
