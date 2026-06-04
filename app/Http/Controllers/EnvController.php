@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Environment\AppEnvironment;
+use App\Models\EnvHistory;
+use App\Models\ActivityLog;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class EnvController extends Controller
 {
-    // 🔹 Basic Info
+    // Added index function to fix the error
     public function index(AppEnvironment $env)
     {
         return response()->json([
@@ -19,7 +23,40 @@ class EnvController extends Controller
         ]);
     }
 
-    // 🚀 1. ENV VALIDATION
+    public function dashboard()
+    {
+        $totalEdits = EnvHistory::count();
+        $lastEdit = EnvHistory::latest()->first();
+        return view('welcome', compact('totalEdits', 'lastEdit'));
+    }
+
+    public function update(Request $request, AppEnvironment $env)
+    {
+        $request->validate([
+            'DB_PORT' => 'required|integer',
+            'APP_DEBUG' => 'required|in:true,false',
+        ]);
+
+        $path = base_path('.env');
+        $oldContent = file_get_contents($path);
+
+        $newContent = $oldContent;
+        foreach ($request->only(['DB_PORT', 'APP_DEBUG']) as $key => $value) {
+            $newContent = preg_replace("/^{$key}=.*/m", "{$key}={$value}", $newContent);
+        }
+
+        file_put_contents($path, $newContent);
+
+        EnvHistory::create(['content' => $newContent]);
+
+        ActivityLog::create([
+            'user_name' => 'Admin', 
+            'action' => 'Updated DB_PORT and APP_DEBUG'
+        ]);
+
+        return response()->json(['message' => 'Configuration updated successfully']);
+    }
+
     public function validateEnv(AppEnvironment $env)
     {
         return response()->json([
@@ -29,42 +66,13 @@ class EnvController extends Controller
         ]);
     }
 
-    // 🚀 2. DATABASE CONNECTION CHECK
     public function checkDatabase()
     {
         try {
             DB::connection()->getPdo();
-
-            return response()->json([
-                'database' => 'Connected successfully'
-            ]);
+            return response()->json(['database' => 'Connected successfully']);
         } catch (\Exception $e) {
-            return response()->json([
-                'database' => 'Connection failed',
-                'error' => $e->getMessage()
-            ], 500);
+            return response()->json(['database' => 'Connection failed', 'error' => $e->getMessage()], 500);
         }
-    }
-
-    // 🚀 3. DEBUG TOGGLE (VERY IMPRESSIVE)
-    public function toggleDebug(AppEnvironment $env)
-    {
-        $current = $env->APP_DEBUG ? 'true' : 'false';
-        $newValue = $env->APP_DEBUG ? 'false' : 'true';
-
-        $path = base_path('.env');
-        $content = file_get_contents($path);
-
-        $content = preg_replace(
-            '/APP_DEBUG=.*/',
-            'APP_DEBUG=' . $newValue,
-            $content
-        );
-
-        file_put_contents($path, $content);
-
-        return response()->json([
-            'message' => "Debug changed from $current to $newValue"
-        ]);
     }
 }
